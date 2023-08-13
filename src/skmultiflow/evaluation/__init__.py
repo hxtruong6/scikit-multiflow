@@ -11,4 +11,5 @@ __all__ = [
     "EvaluatePrequential",
     "EvaluatePrequentialDelayed",
     "EvaluateHoldout",
-    "EvaluationDataBuffer"]
+    "EvaluationDataBuffer",
+]

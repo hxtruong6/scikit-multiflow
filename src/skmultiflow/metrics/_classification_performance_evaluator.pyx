@@ -8,8 +8,8 @@ from collections import deque
 
 from ._confusion_matrix import ConfusionMatrix, MultiLabelConfusionMatrix
 
-DTYPE = np.float
-ctypedef np.float_t DTYPE_t
+DTYPE = float
+ctypedef double DTYPE_t
 
 
 cdef class ClassificationPerformanceEvaluator:
