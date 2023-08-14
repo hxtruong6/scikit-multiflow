@@ -390,7 +390,8 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                 y_ = np.array(list(map(int, np.binary_repr(b, width=self.L))))
                 # ... and gauge a probability for it (given x)
                 w_ = P(y_, X[n], self)
-                # Use to check which marginal probability masses and pairwise probability masses should be updated (by adding w_)
+                # Use y_ to check which marginal probability masses and pairwise 
+                # probability masses should be updated (by adding w_)
                 # if it performs well, keep it, and record the max
                 if w_ > w_max:
                     Yp[n, :] = y_[:].copy()
