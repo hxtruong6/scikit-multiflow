@@ -390,6 +390,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         Yp = np.zeros((N, self.L))
 
         P_margin_yi_1 = np.zeros((N, self.L))
+        P_pair_wise = np.zeros((N, self.L, self.L + 1))
 
         # for each instance
         for n in range(N):
@@ -399,12 +400,28 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             # initialize a $L \times (L+1)$ matrix which encodes the pairwise probability masses
             # (i.e., all possible 2^L label combinations) [0, 1, ..., 2^L-1]
             for b in range(2**self.L):
+                # print(f"b = {b}")
                 # put together a label vector
                 # e.g., b = 3, self.L = 3, y_ = [0, 0, 1] | b = 5, self.L = 3, y_ = [0, 1, 0]
                 y_ = np.array(list(map(int, np.binary_repr(b, width=self.L))))
-                print(f"y_ = {y_}")
+
+                # print(f"y_ = {y_}")
                 # ... and gauge a probability for it (given x)
                 w_ = P(y_, X[n], self)
+                # print(f"w_ = {round(w_, 3)}")
+
+                # is number [0-K]
+                s = np.sum(y_)
+
+                for label_index in range(self.L):
+                    if y_[label_index] == 1:
+                        P_margin_yi_1[n, label_index] += w_
+
+                        P_pair_wise[n, label_index, s] += w_
+
+                        # find pairwise probability. s_y.
+                        # y_k = y_
+
                 # Use y_ to check which marginal probability masses and pairwise
                 # probability masses should be updated (by adding w_)
                 # if it performs well, keep it, and record the max
@@ -420,12 +437,27 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             #     for index in range(self.L):
             #         P_margin_yi_1[n, label_index] += P([index], X[n], self)
 
-        return Yp
+        print(f"P_margin_yi_1 = {[[round(x, 3) for x in y] for y in P_margin_yi_1]}")
+
+        print(
+            f"pair wise {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"
+        )
+        # print(f"Yp = {[[round(x, 3) for x in y] for y in w_max]}")
+
+        return Yp, P_margin_yi_1, P_pair_wise
         # return Yp, marginal probability masses and pairwise probability masses
         # for each instance X[n] (we might need to choose some appropriate data structure)
 
         # We would define other inference algorithms for other loss functions or measures by
         # defining def predict_Hamming(self, X):, def predict_Fmeasure(self, X): and so on
+
+    def predict_hamming(self, X):
+        _, P_margin_yi_1, _ = self.predict(X)
+
+        return np.where(P_margin_yi_1 > 0.5, 1, 0)
+
+    def predict_fmeasure(self, X):
+        pass
 
 
 class MonteCarloClassifierChain(ProbabilisticClassifierChainCustom):

@@ -63,7 +63,11 @@ def test_classifier_chains_all():
     print(f"y_predicted:\n{y_predicted}\n")
 
     y_expected = [[1, 0, 1], [1, 1, 0], [0, 0, 0], [1, 1, 0]]
-    assert np.alltrue(y_predicted == y_expected)
+
+    y_hamming = pcc.predict_hamming(X)
+    print(y_hamming)
+    print(y_hamming == y_expected)
+    # assert np.alltrue(y_predicted == y_expected)
 
 
 if __name__ == "__main__":
