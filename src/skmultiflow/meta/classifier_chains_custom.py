@@ -180,8 +180,10 @@ class ClassifierChainCustom(
             self.fit(X, y)
             return self
 
+        # N is the number of samples, self.L is the number of labels
         N, self.L = y.shape
         L = self.L
+        # D is the number of features
         N, D = X.shape
 
         # Set the chain order
@@ -191,6 +193,9 @@ class ClassifierChainCustom(
         XY[:, 0:D] = X
         XY[:, D:] = y[:, 0 : L - 1]
         for j in range(L):
+            # partial_fit used the true_label (1/0) of the previous label as input
+            # fit used the predicted_label (prob) of the previous label as input
+            # using maximum likelihood
             self.ensemble[j].partial_fit(XY[:, 0 : D + j], y[:, j])
 
         return self
@@ -209,6 +214,8 @@ class ClassifierChainCustom(
 
         """
         N, D = X.shape
+        # N is the number of samples, self.L is the number of labels
+        # Y is the output matrix with shape (N, self.L)
         Y = np.zeros((N, self.L))
         for j in range(self.L):
             if j > 0:
@@ -247,7 +254,10 @@ class ClassifierChainCustom(
         for j in range(self.L):
             if j > 0:
                 X = np.column_stack([X, Y[:, j - 1]])
+                # Y[:, j - 1] is the predicted label of the previous label
+                # e.g., X = [[1, 2, 3], [4, 5, 6]], Y[:, j - 1] = [0, 1, 0], np.column_stack([X, Y[:, j - 1]]) = [[1, 2, 3, 0], [4, 5, 6, 1]]
             Y[:, j] = self.ensemble[j].predict_proba(X)[:, 1]
+            # e.g., self.ensemble[j].predict_proba(X) = [[0.9, 0.1], [0.2, 0.8]], Y[:, j] = [0.1, 0.8]
         return Y
 
     def reset(self):
@@ -379,30 +389,44 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
         Yp = np.zeros((N, self.L))
 
+        P_margin_yi_1 = np.zeros((N, self.L))
+
         # for each instance
         for n in range(N):
             w_max = 0.0
             # for each and every possible label combination
             # initialize a list of $L$ elements which encode the $L$ marginal probability masses
             # initialize a $L \times (L+1)$ matrix which encodes the pairwise probability masses
+            # (i.e., all possible 2^L label combinations) [0, 1, ..., 2^L-1]
             for b in range(2**self.L):
                 # put together a label vector
+                # e.g., b = 3, self.L = 3, y_ = [0, 0, 1] | b = 5, self.L = 3, y_ = [0, 1, 0]
                 y_ = np.array(list(map(int, np.binary_repr(b, width=self.L))))
+                print(f"y_ = {y_}")
                 # ... and gauge a probability for it (given x)
                 w_ = P(y_, X[n], self)
-                # Use y_ to check which marginal probability masses and pairwise 
+                # Use y_ to check which marginal probability masses and pairwise
                 # probability masses should be updated (by adding w_)
                 # if it performs well, keep it, and record the max
                 if w_ > w_max:
                     Yp[n, :] = y_[:].copy()
                     w_max = w_
 
+                # P(y_1 = 1 | X) = P(y_1 = 1 | X, y_2 = 0) * P(y_2 = 0 | X) + P(y_1 = 1 | X, y_2 = 1) * P(y_2 = 1 | X)
+
+            # # iterate over all labels. self.L is number of labels
+            # for label_index in range(self.L):
+
+            #     for index in range(self.L):
+            #         P_margin_yi_1[n, label_index] += P([index], X[n], self)
+
         return Yp
-        # return Yp, marginal probability masses and pairwise probability masses 
+        # return Yp, marginal probability masses and pairwise probability masses
         # for each instance X[n] (we might need to choose some appropriate data structure)
 
-        # We would define other inference algorithms for other loss functions or measures by 
+        # We would define other inference algorithms for other loss functions or measures by
         # defining def predict_Hamming(self, X):, def predict_Fmeasure(self, X): and so on
+
 
 class MonteCarloClassifierChain(ProbabilisticClassifierChainCustom):
     """Monte Carlo Sampling Classifier Chains for multi-label learning.
