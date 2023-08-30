@@ -367,7 +367,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             base_estimator=base_estimator, order=order, random_state=random_state
         )
 
-    def predict(self, X):
+    def predict_subset(self, X):
         """Predict classes for the passed data.
 
         Parameters
@@ -453,12 +453,11 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
     def predict_hamming(self, X):
         _, P_margin_yi_1, _ = self.predict(X)
-
+        
         return np.where(P_margin_yi_1 > 0.5, 1, 0)
 
     def predict_fmeasure(self, X):
         pass
-
 
 class MonteCarloClassifierChain(ProbabilisticClassifierChainCustom):
     """Monte Carlo Sampling Classifier Chains for multi-label learning.
