@@ -367,7 +367,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             base_estimator=base_estimator, order=order, random_state=random_state
         )
 
-    def predict_subset(self, X):
+    def predict(self, X, marginal=False, pairwise=False):
         """Predict classes for the passed data.
 
         Parameters
@@ -389,12 +389,18 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
         Yp = np.zeros((N, self.L))
 
+        # if marginal:
         P_margin_yi_1 = np.zeros((N, self.L))
+
+        # if pairwise:
         P_pair_wise = np.zeros((N, self.L, self.L + 1))
 
         # for each instance
         for n in range(N):
             w_max = 0.0
+
+            # s is the number of labels that are 1
+            s = 0
             # for each and every possible label combination
             # initialize a list of $L$ elements which encode the $L$ marginal probability masses
             # initialize a $L \times (L+1)$ matrix which encodes the pairwise probability masses
@@ -410,17 +416,15 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                 w_ = P(y_, X[n], self)
                 # print(f"w_ = {round(w_, 3)}")
 
-                # is number [0-K]
-                s = np.sum(y_)
+                if pairwise:
+                    # is number [0-K]
+                    s = np.sum(y_)
 
-                for label_index in range(self.L):
-                    if y_[label_index] == 1:
-                        P_margin_yi_1[n, label_index] += w_
-
-                        P_pair_wise[n, label_index, s] += w_
-
-                        # find pairwise probability. s_y.
-                        # y_k = y_
+                if marginal or pairwise:
+                    for label_index in range(self.L):
+                        if y_[label_index] == 1:
+                            P_margin_yi_1[n, label_index] += w_
+                            P_pair_wise[n, label_index, s] += w_
 
                 # Use y_ to check which marginal probability masses and pairwise
                 # probability masses should be updated (by adding w_)
@@ -452,12 +456,17 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         # defining def predict_Hamming(self, X):, def predict_Fmeasure(self, X): and so on
 
     def predict_hamming(self, X):
-        _, P_margin_yi_1, _ = self.predict(X)
-        
+        _, P_margin_yi_1, _ = self.predict(X, marginal=True)
+
         return np.where(P_margin_yi_1 > 0.5, 1, 0)
 
-    def predict_fmeasure(self, X):
+    def predict_fmeasure(self, X, pairwise=True):
         pass
+
+    def predict_sub(self, X):
+        predictions, _, _ = self.predict(X)
+        return predictions
+
 
 class MonteCarloClassifierChain(ProbabilisticClassifierChainCustom):
     """Monte Carlo Sampling Classifier Chains for multi-label learning.
