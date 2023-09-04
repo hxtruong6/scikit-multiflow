@@ -55,19 +55,27 @@ def test_classifier_chains_all():
         SGDClassifier(max_iter=100, tol=1e-3, loss="log_loss", random_state=seed)
     )
     pcc.partial_fit(X, Y)
-    y_predicted = pcc.predict(X)
-    y_predicted_proba = pcc.predict_proba(X)
+    # y_predicted = pcc.predict(X)
+    # y_predicted_proba = pcc.predict_proba(X)
 
-    print(f"X:\n{X}\n")
-    print(f"y_predicted_proba:\n{y_predicted_proba}\n")
-    print(f"y_predicted:\n{y_predicted}\n")
+    # print(f"X:\n{X}\n")
+    # print(f"y_predicted_proba:\n{y_predicted_proba}\n")
+    # print(f"y_predicted:\n{y_predicted}\n")
 
     y_expected = [[1, 0, 1], [1, 1, 0], [0, 0, 0], [1, 1, 0]]
 
-    y_hamming = pcc.predict_hamming(X)
-    print(y_hamming)
-    print(y_hamming == y_expected)
-    # assert np.alltrue(y_predicted == y_expected)
+    # y_hamming = pcc.predict_Hamming(X)
+    # print(y_hamming)
+    # print(y_hamming == y_expected)
+    # # assert np.alltrue(y_predicted == y_expected)
+
+    # y_subset = pcc.predict_Subset(X)
+    # print(y_subset)
+    # print(y_subset == y_expected)
+
+    # y_pre = pcc.predict_Pre(X)
+    # print(f"y_pre:\n{y_pre}\n")
+    # print(f"y_pre == y_expected:\n{y_pre == y_expected}\n")
 
 
 if __name__ == "__main__":

@@ -310,7 +310,12 @@ def P(y, x, cc, payoff=np.prod):
         xy[D + j] = y[j]  # e.g., 1
         p[j] = P_j[y[j]]
         # e.g., 0.1 or, y[j] = 0 is predicted with probability p[j] = 0.9
+    print(f"p = {p}")
 
+    # The more labels we predict incorrectly, the higher the penalty of the payoff
+    # p = [0.99055151 0.00709076 0.99999978]
+    # y_ [0 1 0]
+    # w_ = 0.007
     return payoff(p)
 
 
@@ -441,11 +446,11 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             #     for index in range(self.L):
             #         P_margin_yi_1[n, label_index] += P([index], X[n], self)
 
-        print(f"P_margin_yi_1 = {[[round(x, 3) for x in y] for y in P_margin_yi_1]}")
+        # print(f"P_margin_yi_1 = {[[round(x, 3) for x in y] for y in P_margin_yi_1]}")
 
-        print(
-            f"pair wise {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"
-        )
+        # print(
+        #     f"pair wise {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"
+        # )
         # print(f"Yp = {[[round(x, 3) for x in y] for y in w_max]}")
 
         return Yp, P_margin_yi_1, P_pair_wise
@@ -455,155 +460,35 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         # We would define other inference algorithms for other loss functions or measures by
         # defining def predict_Hamming(self, X):, def predict_Fmeasure(self, X): and so on
 
-    def predict_hamming(self, X):
+    def predict_Hamming(self, X):
         _, P_margin_yi_1, _ = self.predict(X, marginal=True)
+        print(f"P_margin_yi_1 = {[[round(x, 3) for x in y] for y in P_margin_yi_1]}")
 
         return np.where(P_margin_yi_1 > 0.5, 1, 0)
 
-    def predict_fmeasure(self, X, pairwise=True):
+    def predict_Fmeasure(self, X):
+        _, _, P_pair_wise = self.predict(X, pairwise=True)
+        print(
+            f"""Pair wise probability masses:
+            {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"""
+        )
         pass
 
-    def predict_sub(self, X):
+    def predict_Subset(self, X):
         predictions, _, _ = self.predict(X)
         return predictions
 
-
-class MonteCarloClassifierChain(ProbabilisticClassifierChainCustom):
-    """Monte Carlo Sampling Classifier Chains for multi-label learning.
-
-        PCC, using Monte Carlo sampling, published as 'MCC'.
-
-        M samples are taken from the posterior distribution. Therefore we need
-        a probabilistic interpretation of the output, and thus, this is a
-        particular variety of ProbabilisticClassifierChain.
-
-        N.B. Multi-label (binary) only at this moment.
-
-    Parameters
-    ----------
-    base_estimator: StreamModel or sklearn model
-        This is the ensemble classifier type, each ensemble classifier is going
-        to be a copy of the base_estimator.
-
-    M: int (default=10)
-        Number of samples to take from the posterior distribution.
-
-    random_state: int, RandomState instance or None, optional (default=None)
-        If int, random_state is the seed used by the random number generator;
-        If RandomState instance, random_state is the random number generator;
-        If None, the random number generator is the RandomState instance used by `np.random`.
-
-    Examples
-    --------
-    >>> from skmultiflow.data import make_logical
-    >>>
-    >>> X, Y = make_logical(random_state=1)
-    >>>
-    >>> print("TRUE: ")
-    >>> print(Y)
-    >>> print("vs")
-    >>> print("MCC")
-    >>> mcc = MonteCarloClassifierChain()
-    >>> mcc.fit(X, Y)
-    >>> Yp = mcc.predict(X, M=50)
-    >>> print("with 50 iterations ...")
-    >>> print(Yp)
-    >>> Yp = mcc.predict(X, 'default')
-    >>> print("with default (%d) iterations ..." % 1000)
-    >>> print(Yp)
-    TRUE:
-    [[1. 0. 1.]
-     [1. 1. 0.]
-     [0. 0. 0.]
-     [1. 1. 0.]]
-    vs
-    MCC
-    with 50 iterations ...
-    [[1. 0. 1.]
-     [1. 1. 0.]
-     [0. 0. 0.]
-     [1. 1. 0.]]
-    with default (1000) iterations ...
-    [[1. 0. 1.]
-     [1. 1. 0.]
-     [0. 0. 0.]
-     [1. 1. 0.]]
-    """
-
-    def __init__(self, base_estimator=LogisticRegression(), M=10, random_state=None):
-        # Do M iterations, unless overridden by M at prediction time
-        ClassifierChainCustom.__init__(self, base_estimator, random_state=random_state)
-        self.M = M
-
-    def sample(self, x):
-        """
-        Sample y ~ P(y|x)
-
-        Returns
-        -------
-        y: a sampled label vector
-        p: the associated probabilities, i.e., p(y_j=1)=p_j
-        """
-        D = len(x)
-
-        p = np.zeros(self.L)
-        y = np.zeros(self.L)
-        xy = np.zeros(D + self.L)
-        xy[0:D] = x.copy()
-
-        for j in range(self.L):
-            P_j = self.ensemble[j].predict_proba(xy[0 : D + j].reshape(1, -1))[0]
-            y_j = self._random_state.choice(2, 1, p=P_j)
-            xy[D + j] = y_j
-            y[j] = y_j
-            p[j] = P_j[y_j]
-
-        return y, p
-
-    def predict(self, X, M=None):
-        """Predict classes for the passed data.
-
-        Parameters
-        ----------
-        X : numpy.ndarray of shape (n_samples, n_features)
-            The set of data samples to predict the labels for.
-
-        M: int (optional, default=None)
-            Number of sampling iterations. If None, M is set equal to the M value used for
-            initialization
-
-        Returns
-        -------
-        A numpy.ndarray with all the predictions for the samples in X.
-
-        Notes
-        -----
-        Quite similar to the `ProbabilisticClassifierChain.predict()` function.
-
-        Depending on the implementation, `y_max`, `w_max` may be initially set to 0,
-        if we wish to rely solely on the sampling. Setting the `w_max` based on
-        a naive CC prediction gives a good baseline to work from.
-
-        """
+    def predict_Pre(self, X):
         N, D = X.shape
+
         Yp = np.zeros((N, self.L))
 
-        if M is None:
-            M = self.M
-
-        # for each instance
+        Y_prob = self.predict_proba(X)
         for n in range(N):
-            Yp[n, :] = ClassifierChainCustom.predict(self, X[n].reshape(1, -1))
-            w_max = P(Yp[n, :].astype(int), X[n], self)
-            # for M times
-            for m in range(M):
-                y_, p_ = self.sample(
-                    X[n]
-                )  # N.B. in fact, the calculation p_ is done again in P.
-                w_ = P(y_.astype(int), X[n], self)
-                # if it performs well, keep it, and record the max
-                if w_ > w_max:
-                    Yp[n, :] = y_[:].copy()
-                    w_max = w_
+            max_index = np.argmax(Y_prob[n])
+            Yp[n, max_index] = 1
 
+        print(f"Yp = {Yp}")
+        # print(f"Y_prob = {Y_prob}")
+        print([[round(x, 4) for x in y] for y in Y_prob])
         return Yp
