@@ -492,3 +492,9 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         # print(f"Y_prob = {Y_prob}")
         print([[round(x, 4) for x in y] for y in Y_prob])
         return Yp
+
+    def predict_Neg(self, X):
+        pass
+
+    def predict_Mar(self, X):
+        pass

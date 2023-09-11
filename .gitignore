@@ -66,3 +66,6 @@ coverage/
 
 # IDE
 .spyproject/
+
+tests/evaluation/dataset
+tests/evaluation/results
