@@ -67,15 +67,15 @@ def test_classifier_chains_all():
     # y_hamming = pcc.predict_Hamming(X)
     # print(y_hamming)
     # print(y_hamming == y_expected)
-    # # assert np.alltrue(y_predicted == y_expected)
+    # assert np.alltrue(y_predicted == y_expected)
 
     # y_subset = pcc.predict_Subset(X)
     # print(y_subset)
     # print(y_subset == y_expected)
 
-    # y_pre = pcc.predict_Pre(X)
-    # print(f"y_pre:\n{y_pre}\n")
-    # print(f"y_pre == y_expected:\n{y_pre == y_expected}\n")
+    y_pre = pcc.predict_Pre(X)
+    print(f"y_pre:\n{y_pre}\n")
+    print(f"y_pre == y_expected:\n{y_pre == y_expected}\n")
 
 
 if __name__ == "__main__":

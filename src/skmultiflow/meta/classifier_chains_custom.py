@@ -483,14 +483,14 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
         Yp = np.zeros((N, self.L))
 
-        Y_prob = self.predict_proba(X)
+        _, P_margin_yi_1, _ = self.predict(X, marginal=True)
         for n in range(N):
-            max_index = np.argmax(Y_prob[n])
+            max_index = np.argmax(P_margin_yi_1[n])
             Yp[n, max_index] = 1
 
         print(f"Yp = {Yp}")
         # print(f"Y_prob = {Y_prob}")
-        print([[round(x, 4) for x in y] for y in Y_prob])
+        print([[round(x, 4) for x in y] for y in P_margin_yi_1])
         return Yp
 
     def predict_Neg(self, X):
