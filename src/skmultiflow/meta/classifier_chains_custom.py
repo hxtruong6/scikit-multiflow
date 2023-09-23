@@ -494,7 +494,19 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         return Yp
 
     def predict_Neg(self, X):
-        pass
+        _, P_margin_yi_1, _ = self.predict(X, marginal=True)
+        # Sort the marginal probability masses in descending order
+        # and get the indices of the sorted array
+        print(f"P_margin_yi_1 = {P_margin_yi_1}")
+        indices = np.argsort(P_margin_yi_1, axis=1)[:, ::-1]
+        print(f"indices = {indices}")
+
+        # X.shape[0] is the number of instances
+        P = np.ones((X.shape[0], self.L))
+        # Set the smallest probability mass to 1
+        P[np.arange(X.shape[0])[:, None], indices[:, -1]] = 0
+
+        return P
 
     def predict_Mar(self, X):
         pass
