@@ -594,14 +594,14 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                     q_inf[i][k] += P_pair_wise[i][k][s] / (s + 1)
 
             # sort by descending order
-            indices = np.argsort(q_inf[i])[::-1]
-            print(f"Index: {indices}")
+            indices_q = np.argsort(q_inf[i])[::-1]
+            print(f"Index: {indices_q}")
 
             # E[0] = E[0] , E[1] = E[L] ,E[2] = E[L-1]
             E = np.zeros(3)
             E[0] = 1 + P_pair_wise0[i]
             E[1] = 1 + P_pair_wise1[i]
-            E[2] = np.sum(q_inf[i][indices[0 : self.L - 1]])
+            E[2] = np.sum(q_inf[i][indices_q[0 : self.L - 1]])
 
             # sort E in descending order
             indices_E = np.argsort(E)[::-1]
@@ -609,4 +609,4 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             L_optimal = index_L[indices_E[0]]
 
             for _l in range(L_optimal + 1):
-                P[i][indices[_l]] = 1
+                P[i][indices_q[_l]] = 1
