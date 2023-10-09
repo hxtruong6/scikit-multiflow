@@ -509,15 +509,17 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
         return P
 
-    def predict_Mar(self, X, l: int = 1):
+    def predict_Mar(self, X):
         N, _ = X.shape
-        P_pred, P_margin_yi_1, _ = self.predict(X, marginal=True)
+        _, P_margin_yi_1, _ = self.predict(X, marginal=True)
         # Sort in descending order
         indices = np.argsort(P_margin_yi_1, axis=1)[:][:, ::-1]
+        # print(f"indices = {indices}")
 
         # Expectation of the marginal probability masses
         E = np.zeros((N, self.L))
 
+        # Find the optimal l for each instance of expectation
         for i in range(N):
             # E_0
             E[i][0] = 2 - (1 / self.L) * np.sum(P_margin_yi_1, axis=1)[i]
@@ -531,13 +533,19 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                 # print(f"l = {l}, s1 = {s1}, s2 = {s2}")
                 E[i][_l] = 1 - (1 / (self.L - _l)) * s1 + (1 / (self.L - _l) * _l) * s2
 
-        # Get l largest indices
-        indices = np.argsort(E, axis=1)[:][:, ::-1][:, :l]
-        print(f"indices = {indices}")
-        print(f"E = {E}")
+        # TODO: convert to vectorized form
+        # print(f"E = {E}")
+        l_optimal = np.argsort(E, axis=1)[:, ::-1]
+        # print(f"l_optimal = {l_optimal}")
         P = np.zeros((N, self.L))
-        P[np.arange(N)[:, None], indices] = 1
 
+        for i in range(N):
+            # print(f"l_optimal = {l_optimal[i]}")
+            # Set l_optimal highest of the descending sorted marginal probability masses to 1
+            for _l in range(l_optimal[i][0] + 1):
+                P[i][indices[i, _l]] = 1
+
+        # print(f"P_margin_yi_1 = {[[round(x, 5) for x in y] for y in P_margin_yi_1]}")
         return P
 
     def predict_Inf(self, X):
