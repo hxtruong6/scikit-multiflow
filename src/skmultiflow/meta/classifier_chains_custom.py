@@ -399,6 +399,8 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
         # if pairwise:
         P_pair_wise = np.zeros((N, self.L, self.L + 1))
+        P_pair_wise0 = np.zeros((N, 1))
+        P_pair_wise1 = np.zeros((N, 1))
 
         # for each instance
         for n in range(N):
@@ -420,6 +422,14 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                 # ... and gauge a probability for it (given x)
                 w_ = P(y_, X[n], self)
                 # print(f"w_ = {round(w_, 3)}")
+
+                # All values of y_ are 0
+                if np.sum(y_) == 0:
+                    P_pair_wise0[n] = w_
+
+                # All values of y_ are 1
+                if np.sum(y_) == self.L:
+                    P_pair_wise1[n] = w_
 
                 if pairwise:
                     # is number [0-K]
@@ -453,7 +463,15 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         # )
         # print(f"Yp = {[[round(x, 3) for x in y] for y in w_max]}")
 
-        return Yp, P_margin_yi_1, P_pair_wise
+        return (
+            Yp,
+            P_margin_yi_1,
+            {
+                "P_pair_wise": P_pair_wise,
+                "P_pair_wise0": P_pair_wise0,
+                "P_pair_wise1": P_pair_wise1,
+            },
+        )
         # return Yp, marginal probability masses and pairwise probability masses
         # for each instance X[n] (we might need to choose some appropriate data structure)
 
@@ -549,4 +567,46 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         return P
 
     def predict_Inf(self, X):
-        pass
+        N, _ = X.shape
+        _, _, P_pair_wise_obj = self.predict(X, pairwise=True)
+
+        P_pair_wise, P_pair_wise0, P_pair_wise1 = (
+            P_pair_wise_obj["P_pair_wise"],
+            P_pair_wise_obj["P_pair_wise0"],
+            P_pair_wise_obj["P_pair_wise1"],
+        )
+
+        print(
+            f"P_pair_wise = {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"
+        )
+
+        q_inf = np.zeros((N, self.L - 1))
+
+        # E[0] , E[L-1], E[L]
+
+        P = np.zeros((N, self.L))
+        index_L = [0, self.L, self.L - 1]
+
+        for i in range(N):
+            for k in range(self.L - 1):
+                # s is value
+                for s in range(self.L):
+                    q_inf[i][k] += P_pair_wise[i][k][s] / (s + 1)
+
+            # sort by descending order
+            indices = np.argsort(q_inf[i])[::-1]
+            print(f"Index: {indices}")
+
+            # E[0] = E[0] , E[1] = E[L] ,E[2] = E[L-1]
+            E = np.zeros(3)
+            E[0] = 1 + P_pair_wise0[i]
+            E[1] = 1 + P_pair_wise1[i]
+            E[2] = np.sum(q_inf[i][indices[0 : self.L - 1]])
+
+            # sort E in descending order
+            indices_E = np.argsort(E)[::-1]
+            print(f"E: {E} \t indices_E = {indices_E}")
+            L_optimal = index_L[indices_E[0]]
+
+            for _l in range(L_optimal + 1):
+                P[i][indices[_l]] = 1

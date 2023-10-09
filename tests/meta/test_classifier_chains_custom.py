@@ -75,7 +75,8 @@ def test_classifier_chains_all():
 
     # y_pre = pcc.predict_Pre(X)
     # y_pre = pcc.predict_Neg(X)
-    y_pre = pcc.predict_Mar(X)
+    # y_pre = pcc.predict_Mar(X)
+    y_pre = pcc.predict_Inf(X)
     print(f"y_pre:\n{y_pre}\n")
     print(f"y_pre == y_expected:\n{y_pre == y_expected}\n")
 
