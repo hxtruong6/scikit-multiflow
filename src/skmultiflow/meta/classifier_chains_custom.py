@@ -390,7 +390,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         (i.e., all possible 2^L label combinations).
         """
         N, D = X.shape
-        print(f"X.shape = {X.shape} N = {N} D = {D}")
+        # print(f"X.shape = {X.shape} N = {N} D = {D}")
 
         Yp = np.zeros((N, self.L))
 
@@ -488,25 +488,57 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             max_index = np.argmax(P_margin_yi_1[n])
             Yp[n, max_index] = 1
 
-        print(f"Yp = {Yp}")
+        # print(f"Yp = {Yp}")
         # print(f"Y_prob = {Y_prob}")
-        print([[round(x, 4) for x in y] for y in P_margin_yi_1])
+        # print([[round(x, 4) for x in y] for y in P_margin_yi_1])
         return Yp
 
     def predict_Neg(self, X):
+        N, _ = X.shape
         _, P_margin_yi_1, _ = self.predict(X, marginal=True)
-        # Sort the marginal probability masses in descending order
+        # Sort the marginal probability masses in asc order
         # and get the indices of the sorted array
-        print(f"P_margin_yi_1 = {P_margin_yi_1}")
-        indices = np.argsort(P_margin_yi_1, axis=1)[:, ::-1]
-        print(f"indices = {indices}")
+        # print(f"P_margin_yi_1 = {[round(y, 6) for x in P_margin_yi_1 for y in x]}")
+        indices = np.argsort(P_margin_yi_1, axis=1)[:]
+        # print(f"indices = {indices}")
 
         # X.shape[0] is the number of instances
-        P = np.ones((X.shape[0], self.L))
-        # Set the smallest probability mass to 1
-        P[np.arange(X.shape[0])[:, None], indices[:, -1]] = 0
+        P = np.ones((N, self.L))
+        # Set the smallest probability mass to 0 and the rest to 1
+        P[np.arange(N)[:, None], indices[:, :1]] = 0
 
         return P
 
-    def predict_Mar(self, X):
+    def predict_Mar(self, X, l: int = 1):
+        N, _ = X.shape
+        P_pred, P_margin_yi_1, _ = self.predict(X, marginal=True)
+        # Sort in descending order
+        indices = np.argsort(P_margin_yi_1, axis=1)[:][:, ::-1]
+
+        # Expectation of the marginal probability masses
+        E = np.zeros((N, self.L))
+
+        for i in range(N):
+            # E_0
+            E[i][0] = 2 - (1 / self.L) * np.sum(P_margin_yi_1, axis=1)[i]
+            E[i][self.L - 1] = 1 + (1 / self.L) * np.sum(P_margin_yi_1, axis=1)[i]
+
+            s1 = np.sum(P_margin_yi_1, axis=1)[i]
+            s2 = 0
+            # print(f"E = {E}")
+            for _l in range(1, self.L - 1):
+                s2 = s2 + P_margin_yi_1[i, indices[i, _l]]
+                # print(f"l = {l}, s1 = {s1}, s2 = {s2}")
+                E[i][_l] = 1 - (1 / (self.L - _l)) * s1 + (1 / (self.L - _l) * _l) * s2
+
+        # Get l largest indices
+        indices = np.argsort(E, axis=1)[:][:, ::-1][:, :l]
+        print(f"indices = {indices}")
+        print(f"E = {E}")
+        P = np.zeros((N, self.L))
+        P[np.arange(N)[:, None], indices] = 1
+
+        return P
+
+    def predict_Inf(self, X):
         pass
