@@ -23,6 +23,27 @@ from skmultiflow.meta.classifier_chains_custom import ProbabilisticClassifierCha
 SEED = 1
 
 
+class HandleMultiLabelArffFile:
+    def __init__(self, path, dataset_name):
+        self.path = path
+        self.data = arff.loadarff(self.path)
+        self.df = pd.DataFrame(self.data[0])
+
+        self.dataset_name = dataset_name
+
+        y_split_index = self._get_Y_split_index()
+
+        self.X = self.df.iloc[:, :-y_split_index]
+        self.Y = self.df.iloc[:, -y_split_index:].astype(int)
+
+    # Handle custom dataset name to get Y column which is multi-label
+    def _get_Y_split_index(self):
+        if self.dataset_name == "emotions":
+            return 6
+        else:
+            raise Exception("Dataset name is not supported")
+
+
 # Define a function to read datasets from JSON files in a folder using a generator function (yield)
 def read_datasets_from_folder(folder_path):
     for filename in os.listdir(folder_path):
@@ -31,15 +52,15 @@ def read_datasets_from_folder(folder_path):
             # TODO: check if file exist and flexible with testing file
 
             # Training data
-            data = arff.loadarff(
-                os.path.join(folder_path, filename, f"{filename}-train.arff")
+            print(f"Reading {filename} dataset...")
+            df_train = HandleMultiLabelArffFile(
+                os.path.join(folder_path, filename, f"{filename}-train.arff"), filename
             )
-            df_train = pd.DataFrame(data[0])
 
-            data = arff.loadarff(
-                os.path.join(folder_path, filename, f"{filename}-test.arff")
+            # Testing data
+            df_test = HandleMultiLabelArffFile(
+                os.path.join(folder_path, filename, f"{filename}-test.arff"), filename
             )
-            df_test = pd.DataFrame(data[0])
             yield df_train, df_test
 
 
@@ -47,16 +68,19 @@ def read_datasets_from_folder(folder_path):
 def evaluate_model(datasets, model, metric_funcs):
     df_train, df_test = datasets
 
-    X_train, y_train = df_train.iloc[:, :-1], df_train.iloc[:, -1]
-    X_test, y_test = df_test.iloc[:, :-1], df_test.iloc[:, -1]
+    # convert df to numpy array
+    X_train, Y_train = df_train.X.to_numpy(), df_train.Y.to_numpy()
+    X_test, Y_test = df_test.X.to_numpy(), df_test.Y.to_numpy()
 
-    model.fit(X_train, y_train)
+    model.fit(X_train, Y_train)
     # TODO: List of type of prediction
-    y_pred = model.predict(X_test)
+    Y_pred = model.predict(X_test)
+
+    print(f"Y_pred:\t{Y_pred}\nY_test:\t{Y_test}")
 
     score_metrics = []
     for metric_func in metric_funcs:
-        score = metric_func(y_test, y_pred)
+        score = metric_func(Y_test, Y_pred)
         print(f"{metric_func.__name__}: {score}")
         score_metrics.append(score)
 
@@ -87,7 +111,9 @@ def main():
 
     # Iterate over the datasets and models, perform evaluation, and append the results to the DataFrame
     for dataset in read_datasets_from_folder(folder_path):
-        print(dataset[1].iloc[:10])
+        # df_train, df_test = dataset
+        # print(df_train.X)
+        # print(df_train.Y)
         # For each dataset, iterate over the models and perform evaluation
         for model in models_to_evaluate:
             loss_score = evaluate_model(dataset, model, metric_funcs)
@@ -101,7 +127,7 @@ def main():
             )
 
     # Save the results to a CSV file
-    # results.to_csv(output_csv, index=False)
+    results.to_csv(output_csv, index=False)
 
 
 if __name__ == "__main__":

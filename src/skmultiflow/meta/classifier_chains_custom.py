@@ -310,7 +310,7 @@ def P(y, x, cc, payoff=np.prod):
         xy[D + j] = y[j]  # e.g., 1
         p[j] = P_j[y[j]]
         # e.g., 0.1 or, y[j] = 0 is predicted with probability p[j] = 0.9
-    print(f"p = {p}")
+    # print(f"p = {p}")
 
     # The more labels we predict incorrectly, the higher the penalty of the payoff
     # p = [0.99055151 0.00709076 0.99999978]
@@ -480,7 +480,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
     def predict_Hamming(self, X):
         _, P_margin_yi_1, _ = self.predict(X, marginal=True)
-        print(f"P_margin_yi_1 = {[[round(x, 3) for x in y] for y in P_margin_yi_1]}")
+        # print(f"P_margin_yi_1 = {[[round(x, 3) for x in y] for y in P_margin_yi_1]}")
 
         return np.where(P_margin_yi_1 > 0.5, 1, 0)
 
