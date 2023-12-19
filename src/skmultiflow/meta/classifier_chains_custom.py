@@ -217,6 +217,7 @@ class ClassifierChainCustom(
         # N is the number of samples, self.L is the number of labels
         # Y is the output matrix with shape (N, self.L)
         Y = np.zeros((N, self.L))
+        # For each label j, predict the label of the j-th label
         for j in range(self.L):
             if j > 0:
                 X = np.column_stack([X, Y[:, j - 1]])
@@ -372,7 +373,9 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             base_estimator=base_estimator, order=order, random_state=random_state
         )
 
-    def predict(self, X, marginal=False, pairwise=False):
+    def predict(
+        self, X, marginal=False, pairwise=False
+    ) -> (np.ndarray, np.ndarray, dict):
         """Predict classes for the passed data.
 
         Parameters
@@ -497,6 +500,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         return predictions
 
     def predict_Pre(self, X):
+        """Predicts the label combination with the highest precision."""
         N, D = X.shape
 
         Yp = np.zeros((N, self.L))
@@ -512,6 +516,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         return Yp
 
     def predict_Neg(self, X):
+        """Predicts the label combination with the highest negative correlation."""
         N, _ = X.shape
         _, P_margin_yi_1, _ = self.predict(X, marginal=True)
         # Sort the marginal probability masses in asc order
@@ -528,6 +533,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         return P
 
     def predict_Mar(self, X):
+        """Predicts the label combination with the highest marginal probability."""
         N, _ = X.shape
         _, P_margin_yi_1, _ = self.predict(X, marginal=True)
         # Sort in descending order
