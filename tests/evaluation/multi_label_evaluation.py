@@ -1,18 +1,12 @@
 import os
-import json
+import numpy as np
 import pandas as pd
-from sklearn import metrics
-from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression, SGDClassifier
-from sklearn.metrics import hamming_loss
-from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import SGDClassifier
 
 import scipy.io.arff as arff
 import pandas as pd
 
 from skmultiflow.meta.classifier_chains_custom import (
-    ClassifierChainCustom,
     ProbabilisticClassifierChainCustom,
 )
 
@@ -25,6 +19,114 @@ from skmultiflow.meta.classifier_chains_custom import (
 # You can perform various data analysis tasks with df
 
 SEED = 6
+
+
+# Create static class of EvaluationMetrics
+class EvaluationMetrics:
+    @staticmethod
+    def _check_dimensions(Y_true, Y_pred):
+        if Y_true.shape != Y_pred.shape:
+            raise Exception("Y_true and Y_pred have different shapes")
+
+    @staticmethod
+    def get_loss(Y_true, Y_pred, loss_func):
+        EvaluationMetrics._check_dimensions(Y_true, Y_pred)
+        return loss_func(Y_true, Y_pred)
+
+    @staticmethod
+    def hamming_loss(Y_true, Y_pred):
+        """
+        Calculate Hamming Loss for multilabel classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels (2D array with shape [n_samples, n_labels]).
+        - y_pred: NumPy array, predicted labels (2D array with shape [n_samples, n_labels]).
+
+        Returns:
+        - float: Hamming Loss.
+        """
+        EvaluationMetrics._check_dimensions(Y_true, Y_pred)
+
+        # Calculate Hamming Loss
+        loss = np.mean(np.not_equal(Y_true, Y_pred))
+        return loss
+
+    @staticmethod
+    def precision_score(y_true, y_pred):
+        """
+        Calculate Precision score for binary or multiclass classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels.
+        - y_pred: NumPy array, predicted labels.
+
+        Returns:
+        - float: Precision score.
+        """
+        # Ensure y_true and y_pred have the same shape
+        EvaluationMetrics._check_dimensions(y_true, y_pred)
+
+        # Calculate True Positives and False Positives
+        true_positives = np.sum((y_true == 1) & (y_pred == 1))
+        false_positives = np.sum((y_true == 0) & (y_pred == 1))
+
+        # Calculate Precision
+        precision = (
+            true_positives / (true_positives + false_positives)
+            if (true_positives + false_positives) > 0
+            else 0
+        )
+
+        return precision
+
+    @staticmethod
+    def recall_score(y_true, y_pred):
+        """
+        Calculate Recall score for binary or multiclass classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels.
+        - y_pred: NumPy array, predicted labels.
+
+        Returns:
+        - float: Recall score.
+        """
+        # Ensure y_true and y_pred have the same shape
+        EvaluationMetrics._check_dimensions(y_true, y_pred)
+
+        # Calculate True Positives and False Negatives
+        true_positives = np.sum((y_true == 1) & (y_pred == 1))
+        false_negatives = np.sum((y_true == 1) & (y_pred == 0))
+
+        # Calculate Recall
+        recall = (
+            true_positives / (true_positives + false_negatives)
+            if (true_positives + false_negatives) > 0
+            else 0
+        )
+
+        return recall
+
+    @staticmethod
+    def subset_accuracy(y_true, y_pred):
+        """
+        Calculate Subset Accuracy for multilabel classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels (2D array with shape [n_samples, n_labels]).
+        - y_pred: NumPy array, predicted labels (2D array with shape [n_samples, n_labels]).
+
+        Returns:
+        - float: Subset Accuracy.
+        """
+        # Ensure y_true and y_pred have the same shape
+        EvaluationMetrics._check_dimensions(y_true, y_pred)
+
+        # Calculate subset accuracy
+        correct_samples = np.sum(np.all(y_true == y_pred, axis=1))
+        subset_accuracy_value = correct_samples / len(y_true)
+
+        return subset_accuracy_value
 
 
 class HandleMulanDatasetForMultiLabelArffFile:
@@ -89,7 +191,7 @@ def calculate_metrics(Y_true, Y_pred, metric_funcs):
                 score = metric_func(Y_true, Y_pred, **options)
             else:
                 metric_name, metric_func = metric["name"], metric["func"]
-                score = metric_func(Y_true, Y_pred)
+                score = f"{metric_func(Y_pred,Y_true):.5f}"
 
             score_metrics.append(
                 {
@@ -114,7 +216,7 @@ def calculate_metrics(Y_true, Y_pred, metric_funcs):
 
 def training_model(model, X_train, Y_train):
     # ----------------- Fit -----------------
-    print(f"Training {model.__class__.__name__} model...")
+    print(f"Training {model.base_estimator.__class__.__name__} model...")
     model.fit(X_train, Y_train)
     return model
 
@@ -171,8 +273,8 @@ def prepare_model_to_evaluate():
     pcc = [
         # LinearRegression(),
         SGDClassifier(max_iter=100, tol=1e-3, loss="log_loss", random_state=SEED),
-        RandomForestClassifier(random_state=SEED),
-        AdaBoostClassifier(random_state=SEED),
+        # RandomForestClassifier(random_state=SEED),
+        # AdaBoostClassifier(random_state=SEED),
     ]
 
     # Add more models here if you want to evaluate them
@@ -193,7 +295,7 @@ def main():
     # -----------------  MAIN -----------------
     # func is same name of the predict function in ProbabilisticClassifierChainCustom
     predict_funcs = [
-        {"name": "Predict", "func": "predict"},
+        # {"name": "Predict", "func": "predict"},
         {"name": "Predict Hamming Loss", "func": "predict_Hamming"},
         {"name": "Predict Subset", "func": "predict_Subset"},
         {"name": "Predict Pre", "func": "predict_Pre"},
@@ -204,25 +306,22 @@ def main():
     ]
 
     metric_funcs = [
-        {"name": "Hamming Loss", "func": hamming_loss},
+        {"name": "Hamming Loss", "func": EvaluationMetrics.hamming_loss},
         {
-            "name": "Accuracy Score",
-            "func": metrics.accuracy_score,
+            "name": "Precision Score",
+            "func": EvaluationMetrics.precision_score,
+            # "options": {
+            #     "average": "micro"
+            # },  # other options: 'micro', 'macro', 'weighted'
         },
-        # {
-        #     "name": "Precision Score",
-        #     "func": metrics.precision_score,
-        #     "options": {
-        #         "average": "micro"
-        #     },  # other options: 'micro', 'macro', 'weighted'
-        # },
-        # {
-        #     "name": "Recall Score",  #
-        #     "func": metrics.recall_score,
-        #     "options": {
-        #         "average": "micro"
-        #     },  # other options: 'micro', 'macro', 'weighted'
-        # },
+        {
+            "name": "Recall Score",  #
+            "func": EvaluationMetrics.recall_score,
+        },
+        {
+            "name": "Subset Accuracy",
+            "func": EvaluationMetrics.subset_accuracy,
+        },
         # {
         #     "name": "F Measure",
         #     "func": metrics.f1_score,  # specific case of of F-beta when beta = 1 (harmonic mean of precision and recall)
@@ -272,13 +371,13 @@ def main():
             # ]
 
             # Add the results to the DataFrame.
+            print("-" * 10)
             for loss_score_by_predict_func in loss_score_by_predict_funcs:
-                print("-" * 10)
-                print("Name: ", loss_score_by_predict_func["predict_name"])
+                print("Metric: ", loss_score_by_predict_func["predict_name"])
 
                 for score_metric in loss_score_by_predict_func["score_metrics"]:
                     data["Dataset"].append(dataset[0].dataset_name)
-                    data["Model"].append(model.__class__.__name__)
+                    data["Model"].append(model.base_estimator.__class__.__name__)
 
                     data["Predict Function of Model"].append(
                         loss_score_by_predict_func["predict_name"]
