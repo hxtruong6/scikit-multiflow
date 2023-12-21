@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 from sklearn import metrics
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, SGDClassifier
 from sklearn.metrics import hamming_loss
@@ -43,9 +44,10 @@ class HandleMulanDatasetForMultiLabelArffFile:
     def _get_Y_split_index(self):
         if self.dataset_name == "emotions":
             return 6
-
         elif self.dataset_name == "corel5k":
             return 374
+        elif self.dataset_name == "bitex":
+            return 159
 
         else:
             raise Exception("Dataset name is not supported")
@@ -166,7 +168,12 @@ def evaluate_model(
 
 def prepare_model_to_evaluate():
     # TODO: add more models
-    pcc = [SGDClassifier(max_iter=100, tol=1e-3, loss="log_loss", random_state=SEED)]
+    pcc = [
+        # LinearRegression(),
+        SGDClassifier(max_iter=100, tol=1e-3, loss="log_loss", random_state=SEED),
+        RandomForestClassifier(random_state=SEED),
+        AdaBoostClassifier(random_state=SEED),
+    ]
 
     # Add more models here if you want to evaluate them
     # Iterate all BOP methods per each classifier such as SGD, etc.
@@ -202,23 +209,31 @@ def main():
             "name": "Accuracy Score",
             "func": metrics.accuracy_score,
         },
-        {
-            "name": "Precision Score",
-            "func": metrics.precision_score,
-            "options": {
-                "average": "micro"
-            },  # other options: 'micro', 'macro', 'weighted'
-        },
-        {
-            "name": "Recall Score",
-            "func": metrics.recall_score,
-            "options": {
-                "average": "micro"
-            },  # other options: 'micro', 'macro', 'weighted'
-        },
         # {
-        #     "name": "F1 Score",
-        #     "func": metrics.f1_score,
+        #     "name": "Precision Score",
+        #     "func": metrics.precision_score,
+        #     "options": {
+        #         "average": "micro"
+        #     },  # other options: 'micro', 'macro', 'weighted'
+        # },
+        # {
+        #     "name": "Recall Score",  #
+        #     "func": metrics.recall_score,
+        #     "options": {
+        #         "average": "micro"
+        #     },  # other options: 'micro', 'macro', 'weighted'
+        # },
+        # {
+        #     "name": "F Measure",
+        #     "func": metrics.f1_score,  # specific case of of F-beta when beta = 1 (harmonic mean of precision and recall)
+        # },
+        # {
+        #     "name": "Markdness",
+        #     "func": metrics.markdness,
+        # },
+        # {
+        #     "name": "Informedness",
+        #     "func": metrics,
         # },
     ]
 
@@ -305,3 +320,9 @@ if __name__ == "__main__":
 
     """
     main()
+
+    # TODO:
+    # [] 5 datasets
+    # [] 3 models: SGDClassifier, RandomForestClassifier, XGBoostClassifier
+    # [] F-measure, Informedness
+    # [] Implement loss functions

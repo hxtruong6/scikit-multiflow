@@ -493,6 +493,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             f"""Pair wise probability masses:
             {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"""
         )
+        # TODO: implement
         pass
 
     def predict_Subset(self, X):
@@ -531,6 +532,11 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         P[np.arange(N)[:, None], indices[:, :1]] = 0
 
         return P
+
+    def predict_Recall(self, X):
+        # The hightest marginal probability.
+        # return all array with 1
+        return np.ones((X.shape[0], self.L))
 
     def predict_Mar(self, X):
         """Predicts the label combination with the highest marginal probability."""
@@ -616,3 +622,4 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
             for _l in range(L_optimal + 1):
                 P[i][indices_q[_l]] = 1
+                # TODO: check if this is correct
