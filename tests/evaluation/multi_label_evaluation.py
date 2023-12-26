@@ -1,7 +1,8 @@
 import os
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import SGDClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LinearRegression, LogisticRegression, SGDClassifier
 
 import scipy.io.arff as arff
 import pandas as pd
@@ -128,6 +129,91 @@ class EvaluationMetrics:
 
         return subset_accuracy_value
 
+    @staticmethod
+    def negative_predictive_value(y_true, y_pred):
+        """
+        Calculate Negative Predictive Value for binary or multiclass classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels.
+        - y_pred: NumPy array, predicted labels.
+
+        Returns:
+        - float: Negative Predictive Value.
+        """
+        # Ensure y_true and y_pred have the same shape
+        EvaluationMetrics._check_dimensions(y_true, y_pred)
+
+        # Calculate True Negatives and False Negatives
+        true_negatives = np.sum((y_true == 0) & (y_pred == 0))
+        false_negatives = np.sum((y_true == 1) & (y_pred == 0))
+
+        # Calculate Negative Predictive Value
+        npv = (
+            true_negatives / (true_negatives + false_negatives)
+            if (true_negatives + false_negatives) > 0
+            else 0
+        )
+
+        return npv
+
+    @staticmethod
+    def f1_score(y_true, y_pred):
+        """
+        Calculate F1 score for binary or multiclass classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels.
+        - y_pred: NumPy array, predicted labels.
+
+        Returns:
+        - float: F1 score.
+        """
+        # Ensure y_true and y_pred have the same shape
+        EvaluationMetrics._check_dimensions(y_true, y_pred)
+
+        # Calculate Precision and Recall
+        precision = EvaluationMetrics.precision_score(y_true, y_pred)
+        recall = EvaluationMetrics.recall_score(y_true, y_pred)
+
+        # Calculate F1 score
+        f1 = (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall) > 0
+            else 0
+        )
+
+        return f1
+
+    @staticmethod
+    def f_beta_score(y_true, y_pred, beta=1):
+        """
+        Calculate F-beta score for binary or multiclass classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels.
+        - y_pred: NumPy array, predicted labels.
+        - beta: float, beta value. Default value is 1.
+
+        Returns:
+        - float: F-beta score.
+        """
+        # Ensure y_true and y_pred have the same shape
+        EvaluationMetrics._check_dimensions(y_true, y_pred)
+
+        # Calculate Precision and Recall
+        precision = EvaluationMetrics.precision_score(y_true, y_pred)
+        recall = EvaluationMetrics.recall_score(y_true, y_pred)
+
+        # Calculate F-beta score
+        f_beta = (
+            (1 + beta**2) * precision * recall / (beta**2 * precision + recall)
+            if (beta**2 * precision + recall) > 0
+            else 0
+        )
+
+        return f_beta
+
 
 class HandleMulanDatasetForMultiLabelArffFile:
     def __init__(self, path, dataset_name):
@@ -150,14 +236,22 @@ class HandleMulanDatasetForMultiLabelArffFile:
             return 374
         elif self.dataset_name == "bitex":
             return 159
+        elif self.dataset_name == "scene":
+            return 6
+        elif self.dataset_name == "yeast":
+            return 14
+        elif self.dataset_name == "CAL500":
+            return 174
+        elif self.dataset_name == "mediaMill":
+            return 101
 
         else:
             raise Exception("Dataset name is not supported")
 
 
 # Define a function to read datasets from JSON files in a folder using a generator function (yield)
-def read_datasets_from_folder(folder_path):
-    for filename in os.listdir(folder_path):
+def read_datasets_from_folder(folder_path, dataset_names):
+    for filename in dataset_names:
         # check is folder
         if os.path.isdir(os.path.join(folder_path, filename)):
             # TODO: check if file exist and flexible with testing file
@@ -188,7 +282,7 @@ def calculate_metrics(Y_true, Y_pred, metric_funcs):
                     metric["func"],
                     metric["options"],
                 )
-                score = metric_func(Y_true, Y_pred, **options)
+                score = f"{metric_func(Y_pred,Y_true, **options):.5f}"
             else:
                 metric_name, metric_func = metric["name"], metric["func"]
                 score = f"{metric_func(Y_pred,Y_true):.5f}"
@@ -271,8 +365,8 @@ def evaluate_model(
 def prepare_model_to_evaluate():
     # TODO: add more models
     pcc = [
-        # LinearRegression(),
-        SGDClassifier(max_iter=100, tol=1e-3, loss="log_loss", random_state=SEED),
+        LogisticRegression(random_state=SEED),
+        # SGDClassifier(max_iter=100, tol=1e-3, loss="log_loss", random_state=SEED),
         # RandomForestClassifier(random_state=SEED),
         # AdaBoostClassifier(random_state=SEED),
     ]
@@ -292,17 +386,21 @@ def main():
     )
     output_csv = "/Users/xuantruong/Documents/JAIST/scikit-multiflow/tests/evaluation/result/evaluation_results.csv"
 
+    dataset_names = [
+        "emotions",
+        # "yeast",
+        # "scene",
+        # "mediaMill",
+        # "CAL500",
+    ]
     # -----------------  MAIN -----------------
     # func is same name of the predict function in ProbabilisticClassifierChainCustom
     predict_funcs = [
-        # {"name": "Predict", "func": "predict"},
         {"name": "Predict Hamming Loss", "func": "predict_Hamming"},
-        {"name": "Predict Subset", "func": "predict_Subset"},
-        {"name": "Predict Pre", "func": "predict_Pre"},
-        {"name": "Predict Neg", "func": "predict_Neg"},
-        {"name": "Predict Mar", "func": "predict_Mar"},
-        # {"name": "Predict Inf", "func": "predict_Inf"}, #TODO: WIP
-        # {"name": "Predict F Measure", "func": "predict_Fmeasure"}, #TODO: WIP
+        # {"name": "Predict Subset", "func": "predict_Subset"},
+        # {"name": "Predict Pre", "func": "predict_Pre"},
+        # {"name": "Predict Neg", "func": "predict_Neg"},
+        # {"name": "Predict Mar", "func": "predict_Mar"},
     ]
 
     metric_funcs = [
@@ -312,27 +410,28 @@ def main():
             "func": EvaluationMetrics.precision_score,
             # "options": {
             #     "average": "micro"
-            # },  # other options: 'micro', 'macro', 'weighted'
-        },
-        {
-            "name": "Recall Score",  #
-            "func": EvaluationMetrics.recall_score,
-        },
-        {
-            "name": "Subset Accuracy",
-            "func": EvaluationMetrics.subset_accuracy,
+            # },
         },
         # {
-        #     "name": "F Measure",
-        #     "func": metrics.f1_score,  # specific case of of F-beta when beta = 1 (harmonic mean of precision and recall)
+        #     "name": "Recall Score",  #
+        #     "func": EvaluationMetrics.recall_score,
         # },
         # {
-        #     "name": "Markdness",
-        #     "func": metrics.markdness,
+        #     "name": "Subset Accuracy",
+        #     "func": EvaluationMetrics.subset_accuracy,
         # },
         # {
-        #     "name": "Informedness",
-        #     "func": metrics,
+        #     "name": "Negative Predictive Value",
+        #     "func": EvaluationMetrics.negative_predictive_value,
+        # },
+        # {
+        #     "name": "F1 Score",
+        #     "func": EvaluationMetrics.f1_score,
+        # },
+        # {
+        #     "name": "F Beta Score",
+        #     "func": EvaluationMetrics.f_beta_score,
+        #     "options": {"beta": 2},
         # },
     ]
 
@@ -346,7 +445,7 @@ def main():
     }
 
     # Iterate over the datasets and models, perform evaluation, and append the results to the DataFrame
-    for dataset in read_datasets_from_folder(folder_path):
+    for dataset in read_datasets_from_folder(folder_path, dataset_names):
         print(f"{'-'*50}\nDataset: {dataset[0].dataset_name}")
         df_train, df_test = dataset
 
@@ -421,7 +520,27 @@ if __name__ == "__main__":
     main()
 
     # TODO:
-    # [] 5 datasets
-    # [] 3 models: SGDClassifier, RandomForestClassifier, XGBoostClassifier
+    # [X] 5 datasets
+    #   [X] emotions
+    #   [X] yeast
+    #   [X] scene
+    #   [X] mediaMill
+    #   [X] CAL500
+    # [] Models:
+    #   [X] LogisticRegression
+    #   [X] SGDClassifier
+    #   [] RandomForestClassifier
+    #   [] AdaBoostClassifier
     # [] F-measure, Informedness
+    #   [] F-measure
+    #   [] Informedness
     # [] Implement loss functions
+    #   [X] Hamming Loss
+    #   [X] Subset Accuracy
+    #   [X] Precision Score
+    #   [X] Recall Score
+    #   [X] Negative Predictive Value
+    #   [X] F1 Score
+    #   [X] F Beta Score
+    #   [ ] Informedness
+    #   [ ] Markedness
