@@ -520,12 +520,13 @@ if __name__ == "__main__":
     main()
 
     # TODO:
-    # [X] 5 datasets
+    # [X] 5 datasets (<20 labels)
     #   [X] emotions
     #   [X] yeast
     #   [X] scene
-    #   [X] mediaMill
-    #   [X] CAL500
+    #   [] mediaMill
+    #   [] CAL500
+
     # [] Models:
     #   [X] LogisticRegression
     #   [X] SGDClassifier
