@@ -487,15 +487,6 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
         return np.where(P_margin_yi_1 > 0.5, 1, 0)
 
-    def predict_Fmeasure(self, X):
-        _, _, P_pair_wise = self.predict(X, pairwise=True)
-        print(
-            f"""Pair wise probability masses:
-            {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"""
-        )
-        # TODO: implement
-        pass
-
     def predict_Subset(self, X):
         predictions, _, _ = self.predict(X)
         return predictions
@@ -577,6 +568,15 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
 
         # print(f"P_margin_yi_1 = {[[round(x, 5) for x in y] for y in P_margin_yi_1]}")
         return P
+
+    def predict_Fmeasure(self, X):
+        _, _, P_pair_wise = self.predict(X, pairwise=True)
+        print(
+            f"""Pair wise probability masses:
+            {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"""
+        )
+        # TODO: implement
+        pass
 
     def predict_Inf(self, X):
         N, _ = X.shape
