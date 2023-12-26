@@ -606,7 +606,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                         # + 2 because iterate from 1 to L
                         q_f_measure[top_ranked_label][label] += (1 + beta**2) * (
                             P_pair_wise[i][label][s]
-                            / (beta**2 * s + top_ranked_label + 2)
+                            / (beta**2 * (s +1) + top_ranked_label + 1) # revised indices
                         )
                 # sort by descending order indices_q_f_measure_desc[top_ranked_label]
                 indices_q_f_measure_desc.append(
