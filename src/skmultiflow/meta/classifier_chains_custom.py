@@ -687,6 +687,6 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             print(f"E: {E} \t indices_E = {indices_E}")
             L_optimal = index_L[indices_E[0]]
 
-            for _l in range(L_optimal + 1):
+            for _l in range(L_optimal): # revised indices: L_optimal = 0 -> no relevant label, L_optimal = L -> L relevant labels, L_optimal = L-1 -> L-1 relevant labels
                 P[i][indices_q[_l]] = 1
                 # TODO: check if this is correct
