@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
@@ -70,9 +71,9 @@ class EvaluationMetrics:
         # Calculate True Positives and False Positives
         true_positives = np.sum((y_true == 1) & (y_pred == 1))
         false_positives = np.sum((y_true == 0) & (y_pred == 1))
-        print(
-            f"true_positives:\t{true_positives}\t\t| false_positives:\t{false_positives}"
-        )
+        # print(
+        #     f"true_positives:\t{true_positives}\t\t| false_positives:\t{false_positives}"
+        # )
 
         # Calculate Precision
         precision = (
@@ -273,17 +274,36 @@ class EvaluationMetrics:
 
 
 class HandleMulanDatasetForMultiLabelArffFile:
-    def __init__(self, path, dataset_name):
+    def __init__(
+        self,
+        path,
+        dataset_name,
+        target_at_first=False,
+        is_train=False,
+        is_test=False,
+        train_index=None,
+    ):
         self.path = path
         self.data = arff.loadarff(self.path)
         self.df = pd.DataFrame(self.data[0])
+
+        # just for some dataset need to split train test 0% on dataframes randomly
+        if is_train:
+            self.df = self.df.sample(frac=0.8, random_state=SEED)
+            self.train_index = self.df.index
+        elif is_test:
+            self.df = self.df.drop(train_index)
 
         self.dataset_name = dataset_name
 
         y_split_index = self._get_Y_split_index()
 
-        self.X = self.df.iloc[:, :-y_split_index]
-        self.Y = self.df.iloc[:, -y_split_index:].astype(int)
+        if target_at_first:
+            self.Y = self.df.iloc[:, :y_split_index].astype(int)
+            self.X = self.df.iloc[:, y_split_index:]
+        else:
+            self.X = self.df.iloc[:, :-y_split_index]
+            self.Y = self.df.iloc[:, -y_split_index:].astype(int)
 
     # Handle custom dataset name to get Y column which is multi-label
     def _get_Y_split_index(self):
@@ -301,6 +321,12 @@ class HandleMulanDatasetForMultiLabelArffFile:
             return 174
         elif self.dataset_name == "mediaMill":
             return 101
+        elif self.dataset_name == "VirusGO_sparse":
+            return 6
+        elif self.dataset_name == "Water-quality":
+            return 14
+        elif self.dataset_name == "CHD_49":
+            return 6
 
         else:
             raise Exception("Dataset name is not supported")
@@ -308,9 +334,36 @@ class HandleMulanDatasetForMultiLabelArffFile:
 
 # Define a function to read datasets from JSON files in a folder using a generator function (yield)
 def read_datasets_from_folder(folder_path, dataset_names):
+    if not os.path.isdir(folder_path):
+        raise Exception("Folder path is not valid")
+
+    def _get_result(filename, target_at_first=False):
+        df_train = HandleMulanDatasetForMultiLabelArffFile(
+            os.path.join(folder_path, f"{filename}.arff"),
+            filename,
+            target_at_first,
+            is_train=True,
+        )
+
+        df_test = HandleMulanDatasetForMultiLabelArffFile(
+            os.path.join(folder_path, f"{filename}.arff"),
+            filename,
+            target_at_first,
+            is_test=True,
+            train_index=df_train.train_index,
+        )
+
+        return df_train, df_test
+
     for filename in dataset_names:
+        if filename == "VirusGO_sparse":
+            yield _get_result(filename)
+        elif filename == "Water-quality":
+            yield _get_result(filename, target_at_first=True)
+        elif filename == "CHD_49":
+            yield _get_result(filename, target_at_first=True)
         # check is folder
-        if os.path.isdir(os.path.join(folder_path, filename)):
+        elif os.path.isdir(os.path.join(folder_path, filename)):
             # TODO: check if file exist and flexible with testing file
 
             # Training data
@@ -324,6 +377,8 @@ def read_datasets_from_folder(folder_path, dataset_names):
                 os.path.join(folder_path, filename, f"{filename}-test.arff"), filename
             )
             yield df_train, df_test
+        else:
+            raise Exception("Dataset name is not supported")
 
 
 def calculate_metrics(Y_true, Y_pred, metric_funcs):
@@ -394,7 +449,7 @@ def evaluate_model(
     """
 
     # ----------------- Predict -----------------
-    print(f"{'-'*50}\nPredicting {model.__class__.__name__} model...")
+    print(f"{'-'*50}\nPredicting {model.base_estimator.__class__.__name__} model...")
     # [{'name': "Predict", 'score_metrics': [
     # {'Metric Name': 'Hamming Loss', 'Metric Function': 'hamming_loss', 'Score': 0.0},
     # {'Metric Name': 'Accuracy Score', 'Metric Function': 'accuracy_score', 'Score': 1.0},
@@ -405,13 +460,24 @@ def evaluate_model(
     loss_score_by_predict_func = []
     # TODO: predict_HammingLoss, predict_Inf, predict_Mar, predict_Neg, predict_Pre, predict_Subset,...
     for predict_func in predict_funcs:
+        # Measure time for evaluation
+        start_time = time.time()
+
         if predict_func["func"] == "predict":
             Y_pred, _, _ = model.predict(X_test)
         else:
             Y_pred = getattr(model, predict_func["func"])(X_test)
 
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"🤿 Elapsed predict time: {elapsed_time:.5f} seconds")
+
         print(f"Calculating metrics for {predict_func['name']}...")
         score_metrics = calculate_metrics(Y_test, Y_pred, metric_funcs)
+
+        end_time2 = time.time()
+        elapsed_time2 = end_time2 - end_time
+        print(f"🍓 Elapsed calculate metrics time: {elapsed_time2:.5f} seconds")
 
         loss_score_by_predict_func.append(
             {"predict_name": predict_func["name"], "score_metrics": score_metrics}
@@ -446,7 +512,9 @@ def main():
     dataset_names = [
         # "emotions",
         # "yeast",
-        "scene",
+        # "scene",
+        # "VirusGO_sparse"
+        "CHD_49"
     ]
     # -----------------  MAIN -----------------
     # func is same name of the predict function in ProbabilisticClassifierChainCustom
@@ -497,15 +565,13 @@ def main():
 
     # Iterate over the datasets and models, perform evaluation, and append the results to the DataFrame
     for dataset in read_datasets_from_folder(folder_path, dataset_names):
-        print(f"{'-'*50}\nDataset: {dataset[0].dataset_name}")
+        print(f"{'-'*50}\n🐳 Dataset: {dataset[0].dataset_name}")
         df_train, df_test = dataset
 
         # convert df to numpy array
         X_train, Y_train = df_train.X.to_numpy(), df_train.Y.to_numpy()
         X_test, Y_test = df_test.X.to_numpy(), df_test.Y.to_numpy()
-
         print(f"X_train:\t{X_train.shape}\nY_train:\t{Y_train.shape}")
-        # return
 
         # For each dataset, iterate over the models and perform evaluation
         for model in evaluated_models:
@@ -523,7 +589,7 @@ def main():
             # Add the results to the DataFrame.
             print("-" * 10)
             for loss_score_by_predict_func in loss_score_by_predict_funcs:
-                print("Metric: ", loss_score_by_predict_func["predict_name"])
+                print("❄️ Metric: ", loss_score_by_predict_func["predict_name"])
 
                 for score_metric in loss_score_by_predict_func["score_metrics"]:
                     data["Dataset"].append(dataset[0].dataset_name)
