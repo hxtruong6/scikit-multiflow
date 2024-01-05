@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.linear_model import LinearRegression, LogisticRegression, SGDClassifier
 
 import scipy.io.arff as arff
@@ -70,6 +70,9 @@ class EvaluationMetrics:
         # Calculate True Positives and False Positives
         true_positives = np.sum((y_true == 1) & (y_pred == 1))
         false_positives = np.sum((y_true == 0) & (y_pred == 1))
+        print(
+            f"true_positives:\t{true_positives}\t\t| false_positives:\t{false_positives}"
+        )
 
         # Calculate Precision
         precision = (
@@ -213,6 +216,60 @@ class EvaluationMetrics:
         )
 
         return f_beta
+
+    @staticmethod
+    def f_informedness(Y_true, Y_pred):
+        """
+        Calculate Informedness for binary or multiclass classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels.
+        - y_pred: NumPy array, predicted labels.
+
+        Returns:
+        - float: Informedness.
+        """
+        # Ensure y_true and y_pred have the same shape
+        EvaluationMetrics._check_dimensions(Y_true, Y_pred)
+
+        sum_not_y_true_and_not_y_pred = np.sum((1 - Y_true) * (1 - Y_pred), axis=0)
+        sum_y_true_and_y_pred = np.sum(Y_true * Y_pred, axis=0)
+        sum_not_y_true = np.sum(1 - Y_true, axis=0)
+        sum_y_true = np.sum(Y_pred, axis=0)
+
+        f_spec = sum_not_y_true_and_not_y_pred / sum_not_y_true
+        f_rec = sum_y_true_and_y_pred / sum_y_true
+
+        f_inf = 0.5 * (f_spec + f_rec)
+
+        return f_inf.mean()
+
+    @staticmethod
+    def f_markedness(Y_true, Y_pred):
+        """
+        Calculate Markedness for binary or multiclass classification.
+
+        Parameters:
+        - y_true: NumPy array, true labels.
+        - y_pred: NumPy array, predicted labels.
+
+        Returns:
+        - float: Markedness.
+        """
+        # Ensure y_true and y_pred have the same shape
+        EvaluationMetrics._check_dimensions(Y_true, Y_pred)
+
+        sum_not_y_true_and_not_y_pred = np.sum((1 - Y_true) * (1 - Y_pred), axis=0)
+        sum_not_y_pred = np.sum(1 - Y_pred, axis=0)
+        sum_y_true_and_y_pred = np.sum(Y_true * Y_pred, axis=0)
+        sum_y_pred = np.sum(Y_pred, axis=0)
+
+        f_neg = sum_not_y_true_and_not_y_pred / sum_not_y_pred
+        f_pre = sum_y_true_and_y_pred / sum_y_pred
+
+        f_mar = 0.5 * (f_neg + f_pre)
+
+        return f_mar.mean()
 
 
 class HandleMulanDatasetForMultiLabelArffFile:
@@ -366,9 +423,9 @@ def prepare_model_to_evaluate():
     # TODO: add more models
     pcc = [
         LogisticRegression(random_state=SEED),
-        # SGDClassifier(max_iter=100, tol=1e-3, loss="log_loss", random_state=SEED),
-        # RandomForestClassifier(random_state=SEED),
-        # AdaBoostClassifier(random_state=SEED),
+        SGDClassifier(loss="log_loss", random_state=SEED),
+        RandomForestClassifier(random_state=SEED),
+        AdaBoostClassifier(random_state=SEED),
     ]
 
     # Add more models here if you want to evaluate them
@@ -387,52 +444,46 @@ def main():
     output_csv = "/Users/xuantruong/Documents/JAIST/scikit-multiflow/tests/evaluation/result/evaluation_results.csv"
 
     dataset_names = [
-        "emotions",
+        # "emotions",
         # "yeast",
-        # "scene",
-        # "mediaMill",
-        # "CAL500",
+        "scene",
     ]
     # -----------------  MAIN -----------------
     # func is same name of the predict function in ProbabilisticClassifierChainCustom
     predict_funcs = [
         {"name": "Predict Hamming Loss", "func": "predict_Hamming"},
-        # {"name": "Predict Subset", "func": "predict_Subset"},
-        # {"name": "Predict Pre", "func": "predict_Pre"},
-        # {"name": "Predict Neg", "func": "predict_Neg"},
-        # {"name": "Predict Mar", "func": "predict_Mar"},
+        {"name": "Predict Subset", "func": "predict_Subset"},
+        {"name": "Predict Pre", "func": "predict_Pre"},
+        {"name": "Predict Neg", "func": "predict_Neg"},
+        {"name": "Predict Recall", "func": "predict_Recall"},
+        {"name": "Predict Mar", "func": "predict_Mar"},
+        {"name": "Predict Fmeasure", "func": "predict_Fmeasure"},
+        # {"name": "Predict Inf", "func": "predict_Inf"},
     ]
 
     metric_funcs = [
         {"name": "Hamming Loss", "func": EvaluationMetrics.hamming_loss},
+        {"name": "Subset Accuracy", "func": EvaluationMetrics.subset_accuracy},
         {
             "name": "Precision Score",
             "func": EvaluationMetrics.precision_score,
-            # "options": {
-            #     "average": "micro"
-            # },
         },
-        # {
-        #     "name": "Recall Score",  #
-        #     "func": EvaluationMetrics.recall_score,
-        # },
-        # {
-        #     "name": "Subset Accuracy",
-        #     "func": EvaluationMetrics.subset_accuracy,
-        # },
-        # {
-        #     "name": "Negative Predictive Value",
-        #     "func": EvaluationMetrics.negative_predictive_value,
-        # },
-        # {
-        #     "name": "F1 Score",
-        #     "func": EvaluationMetrics.f1_score,
-        # },
-        # {
-        #     "name": "F Beta Score",
-        #     "func": EvaluationMetrics.f_beta_score,
-        #     "options": {"beta": 2},
-        # },
+        {
+            "name": "Negative Predictive Value",
+            "func": EvaluationMetrics.negative_predictive_value,
+        },
+        {
+            "name": "Recall Score",  #
+            "func": EvaluationMetrics.recall_score,
+        },
+        {
+            "name": "Markedness",
+            "func": EvaluationMetrics.f_markedness,
+        },
+        {
+            "name": "F-beta Score",
+            "func": EvaluationMetrics.f_beta_score,
+        },
     ]
 
     # Create a DataFrame to store the evaluation results

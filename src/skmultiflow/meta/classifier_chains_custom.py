@@ -579,9 +579,9 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             P_pair_wise_obj["P_pair_wise1"],
         )
 
-        print(
-            f"P_pair_wise = {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"
-        )
+        # print(
+        #     f"P_pair_wise = {[[[round(x, 3) for x in y] for y in z] for z in P_pair_wise]}"
+        # )
 
         # E[0] , E[L-1], E[L]
 
@@ -606,32 +606,31 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                         # + 2 because iterate from 1 to L
                         q_f_measure[top_ranked_label][label] += (1 + beta**2) * (
                             P_pair_wise[i][label][s]
-                            / (beta**2 * (s +1) + top_ranked_label + 1) # revised indices
+                            / (
+                                beta**2 * (s + 1) + top_ranked_label + 1
+                            )  # revised indices
                         )
                 # sort by descending order indices_q_f_measure_desc[top_ranked_label]
                 indices_q_f_measure_desc.append(
                     np.argsort(q_f_measure[top_ranked_label])[::-1].tolist()
                 )
 
-                print(
-                    f"indices_q_f_measure_desc = {indices_q_f_measure_desc} |{indices_q_f_measure_desc[top_ranked_label]} \n {top_ranked_label} \n q_f_measure: {q_f_measure[top_ranked_label]}"
-                )
+                # print(
+                #     f"indices_q_f_measure_desc = {indices_q_f_measure_desc} |{indices_q_f_measure_desc[top_ranked_label]} \n {top_ranked_label} \n q_f_measure: {q_f_measure[top_ranked_label]}"
+                # )
                 # max q_f_measure
                 # q_f_measure_max = q_f_measure[i][top_ranked_label][indices_q_f_measure[i][0]]
 
                 # Expectation value at top_ranked_label = sum max q_f_measure from 0 to top_ranked_label
                 for i_ in range(top_ranked_label + 1):
-                    print(
-                        f"idx = {i_} | {indices_q_f_measure_desc[top_ranked_label][i_]}"
-                    )
                     expectation_values[top_ranked_label] += q_f_measure[
                         top_ranked_label
                     ][int(indices_q_f_measure_desc[top_ranked_label][i_])]
 
-            print(f"\nexpectation_values = {expectation_values}")
-            print(f"q_f_measure = {q_f_measure}")
-            print(f"indices_q_f_measure_desc = {indices_q_f_measure_desc}")
-            print(f"expectation_value_0 = {expectation_value_0}")
+            # print(f"\nexpectation_values = {expectation_values}")
+            # print(f"q_f_measure = {q_f_measure}")
+            # print(f"indices_q_f_measure_desc = {indices_q_f_measure_desc}")
+            # print(f"expectation_value_0 = {expectation_value_0}")
 
             # Determine ˆy which is ˆyl with the highest E(f (y, ˆyl) where l ∈ [K]0
             # Case 1: Expectation value of 0 > max(expectation_values)
@@ -641,9 +640,11 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                 # Case 2: Expectation value of 0 <= max(expectation_values)
                 # max_expectation_value_index = L_optimal -> optimal top ranked label
                 L_optimal_index = np.argmax(expectation_values)
-                print(f"max_expectation_value_index = {L_optimal_index}")
+                # print(f"max_expectation_value_index = {L_optimal_index}")
                 for _l in range(L_optimal_index + 1):
                     P[i][int(indices_q_f_measure_desc[L_optimal_index][_l])] = 1
+
+        return P
 
     def predict_Inf(self, X):
         N, _ = X.shape
@@ -686,7 +687,12 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
             indices_E = np.argsort(E)[::-1]
             print(f"E: {E} \t indices_E = {indices_E}")
             L_optimal = index_L[indices_E[0]]
+            print(f"indices_q: {indices_q}")
+            print(f"L_optimal = {L_optimal}")
 
-            for _l in range(L_optimal): # revised indices: L_optimal = 0 -> no relevant label, L_optimal = L -> L relevant labels, L_optimal = L-1 -> L-1 relevant labels
+            for _l in range(L_optimal):
+                # revised indices: L_optimal = 0 -> no relevant label, L_optimal = L -> L relevant labels, L_optimal = L-1 -> L-1 relevant labels
                 P[i][indices_q[_l]] = 1
                 # TODO: check if this is correct
+
+        return P
