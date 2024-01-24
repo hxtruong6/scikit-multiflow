@@ -422,8 +422,11 @@ def calculate_metrics(Y_true, Y_pred, metric_funcs):
 
 def training_model(model, X_train, Y_train):
     # ----------------- Fit -----------------
-    print(f"Training {model.base_estimator.__class__.__name__} model...")
+    start_time = time.time()
+    print(f"⏳ Training {model.base_estimator.__class__.__name__} model...")
     model.fit(X_train, Y_train)
+
+    print(f"🤿 Elapsed training time: {time.time() - start_time:.5f} seconds")
     return model
 
 
@@ -472,12 +475,12 @@ def evaluate_model(
         elapsed_time = end_time - start_time
         print(f"🤿 Elapsed predict time: {elapsed_time:.5f} seconds")
 
-        print(f"Calculating metrics for {predict_func['name']}...")
+        # print(f"🍓 Calculating metrics for {predict_func['name']}...")
         score_metrics = calculate_metrics(Y_test, Y_pred, metric_funcs)
 
-        end_time2 = time.time()
-        elapsed_time2 = end_time2 - end_time
-        print(f"🍓 Elapsed calculate metrics time: {elapsed_time2:.5f} seconds")
+        # end_time2 = time.time()
+        # elapsed_time2 = end_time2 - end_time
+        # print(f"🍓 Elapsed calculate metrics time: {elapsed_time2:.5f} seconds")
 
         loss_score_by_predict_func.append(
             {"predict_name": predict_func["name"], "score_metrics": score_metrics}
@@ -510,11 +513,11 @@ def main():
     output_csv = "/Users/xuantruong/Documents/JAIST/scikit-multiflow/tests/evaluation/result/evaluation_results.csv"
 
     dataset_names = [
-        # "emotions",
+        "emotions",
         # "yeast",
         # "scene",
         # "VirusGO_sparse"
-        "CHD_49"
+        # "CHD_49"
     ]
     # -----------------  MAIN -----------------
     # func is same name of the predict function in ProbabilisticClassifierChainCustom
@@ -522,10 +525,10 @@ def main():
         {"name": "Predict Hamming Loss", "func": "predict_Hamming"},
         {"name": "Predict Subset", "func": "predict_Subset"},
         {"name": "Predict Pre", "func": "predict_Pre"},
-        {"name": "Predict Neg", "func": "predict_Neg"},
-        {"name": "Predict Recall", "func": "predict_Recall"},
-        {"name": "Predict Mar", "func": "predict_Mar"},
-        {"name": "Predict Fmeasure", "func": "predict_Fmeasure"},
+        # {"name": "Predict Neg", "func": "predict_Neg"},
+        # {"name": "Predict Recall", "func": "predict_Recall"},
+        # {"name": "Predict Mar", "func": "predict_Mar"},
+        # {"name": "Predict Fmeasure", "func": "predict_Fmeasure"},
         # {"name": "Predict Inf", "func": "predict_Inf"},
     ]
 
@@ -552,6 +555,7 @@ def main():
             "name": "F-beta Score",
             "func": EvaluationMetrics.f_beta_score,
         },
+        # TODO:add informedness
     ]
 
     # Create a DataFrame to store the evaluation results

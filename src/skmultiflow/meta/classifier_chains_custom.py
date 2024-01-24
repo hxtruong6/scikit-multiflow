@@ -372,6 +372,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         super().__init__(
             base_estimator=base_estimator, order=order, random_state=random_state
         )
+        self.predicted_store = None
 
     def predict(
         self, X, marginal=False, pairwise=False
@@ -404,6 +405,11 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         P_pair_wise = np.zeros((N, self.L, self.L + 1))
         P_pair_wise0 = np.zeros((N, 1))
         P_pair_wise1 = np.zeros((N, 1))
+
+        if self.predicted_store is not None:
+            return self.predicted_store
+
+        print("🐠 Predict func is called. Pre-calculate!")
 
         # for each instance
         for n in range(N):
@@ -466,7 +472,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
         # )
         # print(f"Yp = {[[round(x, 3) for x in y] for y in w_max]}")
 
-        return (
+        self.predicted_store = (
             Yp,
             P_margin_yi_1,
             {
@@ -475,6 +481,7 @@ class ProbabilisticClassifierChainCustom(ClassifierChainCustom):
                 "P_pair_wise1": P_pair_wise1,
             },
         )
+        return self.predicted_store
         # return Yp, marginal probability masses and pairwise probability masses
         # for each instance X[n] (we might need to choose some appropriate data structure)
 
