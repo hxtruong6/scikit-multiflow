@@ -308,6 +308,10 @@ class HandleMulanDatasetForMultiLabelArffFile:
             self.X = self.df.iloc[:, :-y_split_index]
             self.Y = self.df.iloc[:, -y_split_index:].astype(int)
 
+        # convert to numpy array
+        self.X = self.X.to_numpy()
+        self.Y = self.Y.to_numpy()
+
     def _get_Y_split_index(self):
         """Get the index for splitting Y from X based on the dataset name."""
         if self.dataset_name == "emotions":
@@ -442,7 +446,9 @@ def prepare_model_to_evaluate():
     """Prepare a list of models for evaluation."""
     base_estimators = [
         LogisticRegression(random_state=SEED),
-        # SGDClassifier(loss="log_loss", random_state=SEED), // Not support for scikit-learn < 1.0
+        SGDClassifier(
+            loss="log_loss", random_state=SEED
+        ),  # Not support for scikit-learn < 1.0
         # RandomForestClassifier(random_state=SEED),
         # AdaBoostClassifier(random_state=SEED),
     ]
@@ -482,7 +488,7 @@ def main():
 
     metric_functions = [
         {"name": "Hamming Loss", "func": EvaluationMetrics.hamming_loss},
-        # {"name": "Subset Accuracy", "func": EvaluationMetrics.subset_accuracy},
+        {"name": "Subset Accuracy", "func": EvaluationMetrics.subset_accuracy},
         # {
         #     "name": "Precision Score",
         #     "func": EvaluationMetrics.precision_score,
