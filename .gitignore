@@ -68,4 +68,6 @@ coverage/
 .spyproject/
 
 tests/evaluation/dataset
+tests/evaluation/datasets
 tests/evaluation/results
+*/**/.DS_Store
